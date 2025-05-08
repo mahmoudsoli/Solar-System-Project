@@ -1,10 +1,24 @@
 import js from '@eslint/js';
 
 export default [
+  js.configs.recommended,
   {
-    ...js.configs.recommended,
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        process: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        alert: 'readonly',
+        fetch: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+      },
+    },
     rules: {
-      ...js.configs.recommended.rules, // لو عايز تحتفظ بكل القواعد اللي جايه من recommended
       semi: ['error', 'always'],
       quotes: ['error', 'single'],
     },
