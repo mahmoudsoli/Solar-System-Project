@@ -34,6 +34,7 @@ jobs:
         run: npx eslint . --ext .js,.ts
   unit-test:
     runs-on: self-hosted
+    needs: [lint]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -59,6 +60,7 @@ jobs:
 
   Code-Coverage:
     runs-on: self-hosted
+    needs: [unit-test]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -84,7 +86,7 @@ jobs:
 
   Scan-Secrets-with-Gitleaks:
     runs-on: self-hosted
-    needs: [unit-test, Code-Coverage]
+    needs: [Code-Coverage]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
