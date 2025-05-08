@@ -2,7 +2,7 @@ name: Workflow
 on:
   push:
     branches:
-      - feature/test-test
+      - feature/test
   pull_request:
     branches:
       - main
