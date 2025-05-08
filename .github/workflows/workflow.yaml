@@ -16,8 +16,24 @@ env:
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
+  lint:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npx eslint . --ext .js,.ts
   unit-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -42,7 +58,7 @@ jobs:
           path: ./test-results.xml
 
   Code-Coverage:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -67,7 +83,8 @@ jobs:
           path: ./coverage/lcov.info
 
   Scan-Secrets-with-Gitleaks:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    needs: [unit-test, Code-Coverage]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -79,7 +96,8 @@ jobs:
           fail_on: all
 
   build-docker-image:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    needs: [Scan-Secrets-with-Gitleaks]
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
