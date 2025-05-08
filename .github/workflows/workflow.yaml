@@ -36,7 +36,10 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Install ESLint dependencies (if needed)
+        run: npm install --save-dev eslint @eslint/js
 
       - name: Run ESLint
         run: npx eslint . --ext .js,.ts
