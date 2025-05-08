@@ -27,7 +27,7 @@ jobs:
                 node-version: '18'
             
             - name: Install Dependencies
-              uses: npm install@v2.0.0
+              run: npm install@v2.0.0
 
             - name: Run Unit Tests
               id: unit-test
@@ -52,7 +52,7 @@ jobs:
                 node-version: '18'
             
             - name: Install Dependencies
-              uses: npm install@v2.0.0
+              run: npm install@v2.0.0
 
             - name: Run code coverage
               id: code-coverage
