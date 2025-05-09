@@ -11,7 +11,7 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '/')));
 app.use(cors())
 
-mongoose.connect('mongodb+srv://supercluster.d83jj.mongodb.net/superData', {
+mongoose.connect(process.env.MONGO_URI, {
     user: process.env.MONGO_USERNAME,
     pass: process.env.MONGO_PASSWORD,
     useNewUrlParser: true,
@@ -38,22 +38,19 @@ var planetModel = mongoose.model('planets', dataSchema);
 
 
 
-app.post('/planet', async function(req, res) {
-    try {
-        const planetData = await planetModel.findOne({ id: req.body.id });
-
-        if (!planetData) {
-            console.log("Planet not found. We only have 9 planets and a sun. Select a number from 0 - 9");
-            return res.status(404).send("Planet not found");
+app.post('/planet',   function(req, res) {
+   // console.log("Received Planet ID " + req.body.id)
+    planetModel.findOne({
+        id: req.body.id
+    }, function(err, planetData) {
+        if (err) {
+            alert("Ooops, We only have 9 planets and a sun. Select a number from 0 - 9")
+            res.send("Error in Planet Data")
+        } else {
+            res.send(planetData);
         }
-
-        res.send(planetData);
-    } catch (err) {
-        console.error("Error fetching planet:", err);
-        res.status(500).send("Error in Planet Data");
-    }
-});
-
+    })
+})
 
 app.get('/',   async (req, res) => {
     res.sendFile(path.join(__dirname, '/', 'index.html'));
