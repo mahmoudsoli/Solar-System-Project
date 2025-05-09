@@ -92,10 +92,12 @@ jobs:
 
       - name: Install and Run Gitleaks
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
           chmod +x gitleaks
           ./gitleaks config --init > .gitleaks.toml
           ./gitleaks detect --source=. --config=.gitleaks.toml --verbose --redact --exit-code 1
+
 
 
 
