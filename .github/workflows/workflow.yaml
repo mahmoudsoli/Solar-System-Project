@@ -83,7 +83,7 @@ jobs:
           name: code-coverage-results
           path: ./coverage/lcov.info
 
-  scan:
+  Scan-Secrets-with-Gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
     needs: [Code-Coverage]
