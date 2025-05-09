@@ -83,21 +83,17 @@ jobs:
           name: code-coverage-results
           path: ./coverage/lcov.info
 
-  Scan-Secrets-with-Gitleaks:
+  scan:
+    name: gitleaks
     runs-on: ubuntu-latest
     needs: [Code-Coverage]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4.2.2
-
-      - name: Install and Run Gitleaks
-        run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz -o gitleaks.tar.gz
-          tar -xzf gitleaks.tar.gz
-          chmod +x gitleaks
-          ./gitleaks config --init > .gitleaks.toml
-          ./gitleaks detect --source=. --config=.gitleaks.toml --verbose --redact --exit-code 1
-
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build-docker-image:
     runs-on: self-hosted
     needs: [Scan-Secrets-with-Gitleaks]
