@@ -127,13 +127,24 @@ jobs:
             MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
             MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
 
-      - name: Run container for testing
+      - name: Run container and test health endpoint
         run: |
-          docker run --rm \
+          docker run -d --name solar-test \
             -e MONGO_URI='${{ secrets.MONGO_URI }}' \
             -e MONGO_USERNAME='${{ secrets.MONGO_USERNAME }}' \
             -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \
+            -p 3000:3000 \
             msoliman427/solar-system:${{ steps.sha.outputs.short_sha }}
+      
+          echo " Waiting for server to start..."
+          sleep 10
+      
+          echo " Testing health endpoint..."
+          curl --fail http://localhost:3000/health || (docker logs solar-test && exit 1)
+      
+          echo " Server responded successfully, cleaning up..."
+          docker rm -f solar-test
+          
 
       - name: Push image to Docker Hub
         uses: docker/build-push-action@v5
