@@ -127,6 +127,8 @@ jobs:
             MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
             MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
 
+      - name: print URI
+        run: echo "MONGO_URI=${{ secrets.MONGO_URI }}"  
       - name: Run container for testing
         run: |
           docker run --rm msoliman427/solar-system:${{ steps.sha.outputs.short_sha }}
