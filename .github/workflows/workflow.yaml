@@ -12,6 +12,9 @@ env:
   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
 
 jobs:
   unit-test:
@@ -154,3 +157,38 @@ jobs:
             MONGO_URI=${{ secrets.MONGO_URI }}
             MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
             MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+
+  Replace-tokens:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v3
+        
+        - name: Get Ingress External IP
+          id: get_ingress_ip
+          run: |
+            INGRESS_IP=$(kubectl get svc ingress-nginx -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+  
+        - name: Replace Ingress IP in YAML files
+          run: |
+            find kubernetes/development -type f -name '*.yaml' -exec sed -i "s|\${INGRESS_IP}|$INGRESS_IP|g" {} +
+
+  login-to-EKS:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: run deployment script
+        run: |
+          kubectl apply -n dev -f kubernetes/development/*.yaml
+    
