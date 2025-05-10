@@ -1,67 +1,190 @@
-console.log('We are inside client.js');
+let mongoose = require("mongoose");
+let server = require("./app");
+let chai = require("chai");
+let chaiHttp = require("chai-http");
 
-/* on page load  */
-window.onload = function() {
-    const planet_id = document.getElementById("planetID").value
-    console.log("onLoad - Request Planet ID - " + planet_id)
 
-    fetch("/os", {
-            method: "GET"
-        })
-        .then(function(res) {
-            if (res.ok) {
-                return res.json();
+// Assertion 
+chai.should();
+chai.use(chaiHttp); 
+
+describe('Planets API Suite', () => {
+
+    describe('Fetching Planet Details', () => {
+        it('it should fetch a planet named Mercury', (done) => {
+            let payload = {
+                id: 1
             }
-            thrownewError('Request failed');
-        }).catch(function(error) {
-            console.log(error);
-        })
-        .then(function(data) {
-            document.getElementById('hostname').innerHTML = `Pod - ${data.os} `
-          //  document.getElementById('environment').innerHTML = ` Env - ${data.env}  `
-        });
-};
-
-
-
-const btn = document.getElementById('submit');
-if (btn) {
-    btn.addEventListener('click', func);
-}
-
-function func() {
-    const planet_id = document.getElementById("planetID").value
-    console.log("onClick Submit - Request Planet ID - " + planet_id)
-
-    fetch("/planet", {
-            method: "POST",
-            body: JSON.stringify({
-                id: document.getElementById("planetID").value
-            }),
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-            }
-        })
-        .then(function(res2) {
-            if (res2.ok) {
-                return res2.json();
-            }
-            thrownewError('Request failed.');
-        }).catch(function(error) {
-            alert("Ooops, We have 8 planets.\nSelect a number from 0 - 8")
-            console.log(error);
-        })
-        .then(function(data) {
-            document.getElementById('planetName').innerHTML = ` ${data.name} `
-
-            const element = document.getElementById("planetImage");
-            const image = ` ${data.image} `
-            element.style.backgroundImage  = "url("+image+")"
-
-            const planet_description = ` ${data.description} `
-            document.getElementById('planetDescription').innerHTML = planet_description.replace(/(.{80})/g, "$1<br>");
-
-          
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(1);
+                    res.body.should.have.property('name').eql('Mercury');
+                done();
+              });
         });
 
-}
+        it('it should fetch a planet named Venus', (done) => {
+            let payload = {
+                id: 2
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(2);
+                    res.body.should.have.property('name').eql('Venus');
+                done();
+              });
+        });
+
+        it('it should fetch a planet named Earth', (done) => {
+            let payload = {
+                id: 3
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(3);
+                    res.body.should.have.property('name').eql('Earth');
+                done();
+              });
+        });
+        it('it should fetch a planet named Mars', (done) => {
+            let payload = {
+                id: 4
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(4);
+                    res.body.should.have.property('name').eql('Mars');
+                done();
+              });
+        });
+
+        it('it should fetch a planet named Jupiter', (done) => {
+            let payload = {
+                id: 5
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(5);
+                    res.body.should.have.property('name').eql('Jupiter');
+                done();
+              });
+        });
+
+        it('it should fetch a planet named Satrun', (done) => {
+            let payload = {
+                id: 6
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(6);
+                    res.body.should.have.property('name').eql('Saturn');
+                done();
+              });
+        });
+
+        it('it should fetch a planet named Uranus', (done) => {
+            let payload = {
+                id: 7
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(7);
+                    res.body.should.have.property('name').eql('Uranus');
+                done();
+              });
+        });
+
+        it('it should fetch a planet named Neptune', (done) => {
+            let payload = {
+                id: 8
+            }
+          chai.request(server)
+              .post('/planet')
+              .send(payload)
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('id').eql(8);
+                    res.body.should.have.property('name').eql('Neptune');
+                done();
+              });
+        });
+
+        // it('it should fetch a planet named Pluto', (done) => {
+        //     let payload = {
+        //         id: 9
+        //     }
+        //   chai.request(server)
+        //       .post('/planet')
+        //       .send(payload)
+        //       .end((err, res) => {
+        //             res.should.have.status(200);
+        //             res.body.should.have.property('id').eql(9);
+        //             res.body.should.have.property('name').eql('Sun');
+        //         done();
+        //       });
+        // });
+
+
+    });        
+});
+
+//Use below test case to achieve coverage
+describe('Testing Other Endpoints', () => {
+
+    describe('it should fetch OS Details', () => {
+        it('it should fetch OS details', (done) => {
+          chai.request(server)
+              .get('/os')
+              .end((err, res) => {
+                    res.should.have.status(200);
+                done();
+              });
+        });
+    });
+
+    describe('it should fetch Live Status', () => {
+        it('it checks Liveness endpoint', (done) => {
+          chai.request(server)
+              .get('/live')
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('status').eql('live');
+                done();
+              });
+        });
+    });
+
+    describe('it should fetch Ready Status', () => {
+        it('it checks Readiness endpoint', (done) => {
+          chai.request(server)
+              .get('/ready')
+              .end((err, res) => {
+                    res.should.have.status(200);
+                    res.body.should.have.property('status').eql('ready');
+                done();
+              });
+        });
+    });
+
+});

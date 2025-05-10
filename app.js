@@ -36,7 +36,9 @@ var dataSchema = new Schema({
 });
 var planetModel = mongoose.model('planets', dataSchema);
 
-
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+  });
 
 app.post('/planet',   function(req, res) {
    // console.log("Received Planet ID " + req.body.id)

@@ -1,103 +1,195 @@
+
 name: Workflow
 on:
-  push:
-    branches:
-      - feature/dev
+
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 env:
-    MONGO_URI: ${{ secrets.MONGO_URI }}
-    MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
-    MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
-    DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-    DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+  MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
+  MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+
 jobs:
-    unit-test:
+  unit-test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Unit Tests
+        id: unit-test
+        run: npm test
+
+      - name: Upload test results
+        if: steps.unit-test.outcome == 'failure' || steps.unit-test.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: ./test-results.xml
+
+  Code-Coverage:
+    runs-on: self-hosted
+    needs: [unit-test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run code coverage
+        id: code-coverage
+        run: npm run coverage
+
+      - name: Upload code coverage results
+        if: steps.code-coverage.outcome == 'failure' || steps.code-coverage.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-results
+          path: ./coverage/lcov.info
+
+  Scan-Secrets-with-Gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    needs: [Code-Coverage]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
+  build-docker-image:
+    runs-on: self-hosted
+    needs: [Scan-Secrets-with-Gitleaks]
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set short SHA
+        id: sha
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build image (load locally)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: msoliman427/solar-system:${{ steps.sha.outputs.short_sha }}
+          load: true 
+          build-args: |
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
+            MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+
+      - name: Run container and test health endpoint
+        run: |
+          docker run -d --name solar-test \
+            -e MONGO_URI='${{ secrets.MONGO_URI }}' \
+            -e MONGO_USERNAME='${{ secrets.MONGO_USERNAME }}' \
+            -e MONGO_PASSWORD='${{ secrets.MONGO_PASSWORD }}' \
+            -p 3000:3000 \
+            msoliman427/solar-system:${{ steps.sha.outputs.short_sha }}
+      
+          echo " Waiting for server to start..."
+          sleep 10
+      
+          echo " Testing health endpoint..."
+          curl --fail http://localhost:3000/health || (docker logs solar-test && exit 1)
+      
+          echo " Server responded successfully, cleaning up..."
+          docker rm -f solar-test
+          
+
+      - name: Push image to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: msoliman427/solar-system:${{ steps.sha.outputs.short_sha }}
+          build-args: |
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
+            MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+
+  Replace-tokens:
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout
-              uses: actions/checkout@v4.2.2
-            
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                node-version: '18'
-            
-            - name: Install Dependencies
-              uses: npm install@v2.0.0
+        - name: Checkout code
+          uses: actions/checkout@v3
+        
+        - name: Get Ingress External IP
+          id: get_ingress_ip
+          run: |
+            INGRESS_IP=$(kubectl get svc ingress-nginx -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+  
+        - name: Replace Ingress IP in YAML files
+          run: |
+            find kubernetes/development -type f -name '*.yaml' -exec sed -i "s|\${INGRESS_IP}|$INGRESS_IP|g" {} +
 
-            - name: Run Unit Tests
-              id: unit-test
-              run: npm test
-            
-            - name: Upload test results
-              if: steps.unit-test.outcome == 'failure' || steps.unit-test.outcome == 'success'
-              uses: actions/upload-artifact@v3
-              with:
-                name: unit-test-results
-                path: ./test-results.xml
+  login-to-EKS:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: run deployment script
+        run: |
+          kubectl apply -n dev -f kubernetes/development/*.yaml
     
-    Code-Coverage:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4.2.2
-            
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                node-version: '18'
-            
-            - name: Install Dependencies
-              uses: npm install@v2.0.0
-
-            - name: Run code coverage
-              id: code-coverage
-              run: npm run coverage
-            
-            - name: Upload code coverage results
-              if: steps.code-coverage.outcome == 'failure' || steps.code-coverage.outcome == 'success'
-              uses: actions/upload-artifact@v3
-              with:
-                name: code-coverage-results
-                path: ./coverage/lcov.info
-
-    Scan-Secrets-with-Gitleaks:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4.2.2
-
-            - name: Gitleaks
-              uses: gitleaks/gitleaks-action@v2.3.9
-              with:
-                config: .gitleaks.toml
-                fail_on: all
-
-    build-docker-image:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout source code
-              uses: actions/checkout@v4
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Log in to Docker Hub
-              uses: docker/login-action@v3
-              with:
-                username: ${ DOCKER_USERNAME }
-                password: ${ DOCKER_PASSWORD }
-
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v5
-              with:
-                context: .
-                push: true
-                tags: msoliman427/solar-system::${{ github.sha }}
-                build-args: |
-                    MONGO_USERNAME= ${{ secrets.MONGO_USERNAME }}
-                    MONGO_PASSWORD= ${{ secrets.MONGO_PASSWORD }}
